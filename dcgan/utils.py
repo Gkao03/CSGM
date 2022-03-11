@@ -4,10 +4,21 @@ import numpy as np
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader, ConcatDataset, Dataset
 import os
 import random
 
+
+class MyDataset(Dataset):
+    def __init__(self):
+        pass
+
+    def __len__(self):
+        pass
+
+    def __getitem__(self, index):
+        pass
+    
 
 def weights_init(m):
     """
