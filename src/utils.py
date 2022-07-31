@@ -51,7 +51,14 @@ def np_to_image_save(np_array, path):
 
 
 def scale_array_uint8(arr):
-    new_arr = ((arr - arr.min()) * (1/arr.ptp() * 255)).astype('uint8')
+    new_arr = ((arr - arr.min()) * (1 / arr.ptp() * 255)).astype('uint8')
+    return new_arr
+
+
+def scale_array(arr, min_val, max_val):
+    assert max_val > min_val
+    scale = max_val - min_val
+    new_arr = ((arr - arr.min()) * (1 / arr.ptp() * scale)) + min_val
     return new_arr
 
 
@@ -116,20 +123,17 @@ def get_objective_loss(G_model, A, Y, z, lbda, p=2):
     return loss
 
 
-def get_measurement_error(G_model, A, Y, z, p=2):
-    G_z = G_model(z)
-    meas_error = torch.square(torch.norm(torch.matmul(A, G_z.flatten()) - Y, p=p))
+def get_measurement_error(X_pred, A, Y, p=2):
+    meas_error = torch.square(torch.norm(torch.matmul(A, X_pred.flatten()) - Y, p=p))
     return meas_error.item()
 
 
-def get_recon_error(G_model, z, X, p=2):
-    G_z = G_model(z)
-    recon_error = torch.square(torch.norm(G_z.squeeze() - X, p=p))
+def get_recon_error(X_pred, X, p=2):
+    recon_error = torch.square(torch.norm(X_pred.squeeze() - X, p=p))
     return recon_error.item()
 
 
-def get_recon_error_per_pixel(G_model, z, X):
-    G_z = G_model(z)
-    abs_diff_tensor = torch.abs(G_z.squeeze() - X)
+def get_recon_error_per_pixel(X_pred, X):
+    abs_diff_tensor = torch.abs(X_pred.squeeze() - X)
     mean_pixel_error = torch.mean(abs_diff_tensor)
     return mean_pixel_error.item()

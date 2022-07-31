@@ -24,7 +24,8 @@ class Args:
         self.image_path = "/media/FiveTB/oosto_weapon2022/gorek/data/celeba/img_align_celeba/051662.jpg"
         self.out_image_dir = "/media/biometrics/interns2022/gorek/csgm/imgs"
         self.out_dir = "/media/biometrics/interns2022/gorek/csgm/out"
-        self.L_lambda = 0.001
+        # self.L_lambda = 0.001  # original
+        self.L_lambda = 0.00000001
         self.learning_rate = 0.01
         self.num_iters = 500
 
@@ -38,8 +39,9 @@ def run_csgm(A, X, Y, z_init, lbda, step_size, num_iters, G_model, optimizer: op
     """
     G_model.eval()
     z = z_init
-    best_meas_error = get_measurement_error(G_model, A, Y, z)
-    best_recon_error = get_recon_error(G_model, z, X)
+    G_z = G_model(z).detach()
+    best_meas_error = get_measurement_error(G_z, A, Y)
+    best_recon_error = get_recon_error(G_z, X)
     zhat = copy.deepcopy(z)
 
     for i in range(num_iters):
@@ -55,8 +57,9 @@ def run_csgm(A, X, Y, z_init, lbda, step_size, num_iters, G_model, optimizer: op
         z = z.detach()
 
         G_model.eval()
-        meas_error = get_measurement_error(G_model, A, Y, z)
-        recon_error = get_recon_error(G_model, z, X)
+        G_z = G_model(z).detach()
+        meas_error = get_measurement_error(G_z, A, Y)
+        recon_error = get_recon_error(G_z, X)
 
         if meas_error < best_meas_error:
             best_meas_error = meas_error
@@ -78,7 +81,7 @@ def z_to_x(G_model, z):
     return x
 
 def main(args: Args):
-    measurements = [20, 50, 100, 200, 500, 1000, 2500, 5000, 7500, 10000]
+    measurements = [20, 50, 100, 200, 500, 750, 1000, 1500, 2000, 2500, 5000, 7500, 10000]
     recon_errors = []
     recon_pixel_errors = []
     z_init = (torch.randn(1, args.noise_size, 1, 1) * 0.1).requires_grad_()
@@ -98,16 +101,22 @@ def main(args: Args):
         zhat = run_csgm(A, X, Y, z_init, args.L_lambda, 0.01, args.num_iters, G_model, optimizer)
 
         G_model.eval()
-        recon_error = get_recon_error(G_model, zhat, X)
+        G_z = G_model(zhat).detach()
+        G_z_scale = torch.tensor(scale_array(G_z.numpy(), 0, 1))
+        X_scale = torch.tensor(scale_array(X.numpy(), 0, 1))
+
+        recon_error = get_recon_error(G_z_scale, X_scale)
         recon_errors.append(recon_error)
-        recon_pixel_error = get_recon_error_per_pixel(G_model, zhat, X)
+        recon_pixel_error = get_recon_error_per_pixel(G_z_scale, X_scale)
         recon_pixel_errors.append(recon_pixel_error)
+
+        print(f"Measurement: {m} | Recon Error: {recon_error} | Recon Pixel Error: {recon_pixel_error}")
 
         xhat = z_to_x(G_model, zhat).detach().cpu().numpy().squeeze().transpose(1, 2, 0)
         np_to_image_save(xhat, os.path.join(args.out_image_dir, f"xhat_{m}.png"))
 
     plot(measurements, recon_pixel_errors, title="CSGM", xlabel="# Measurements", ylabel="Recon Error (per pixel)", xticks=False, save_path="./plot.png")
-    save_list_values(os.path.join(args.out_dir, "dcgan_recon.txt"), measurements, recon_errors, recon_pixel_errors)
+    # save_list_values(os.path.join(args.out_dir, "dcgan_recon.txt"), measurements, recon_errors, recon_pixel_errors)
 
 
 if __name__ == '__main__':
