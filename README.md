@@ -1,1 +1,1 @@
-# CSGM
+# Compressed Sensing for Generative Models (CSGM)
